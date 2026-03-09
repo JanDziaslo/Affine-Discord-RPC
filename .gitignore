@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Config — contains secrets (client_id, bot_token)
+#config.yaml
+
+# Cache
+~/.cache/affine-discord-rpc/

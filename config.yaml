@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════
+#  AFFiNE Discord RPC — Configuration
+#  See README.md for full setup instructions.
+# ═══════════════════════════════════════════════════════
+
+# ── Required ─────────────────────────────────────────────────────────────────
+
+# Your Discord Application ID.
+# Get it from: https://discord.com/developers/applications → New Application
+# → copy "Application ID" from the General Information page.
+client_id: ""
+
+# Direct HTTPS URL of the logo shown in Discord Rich Presence.
+large_image_url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2RBuIHGmBzeMMhyF7a1fdndXgVoLx5DkH8T9xzxbyDST1cra6K0OZ4qnpxE4C4dNDnl4"
+
+# ── Optional ──────────────────────────────────────────────────────────────────
+
+# How often (in seconds) to check AFFiNE state and update Rich Presence.
+poll_interval: 5
+
+# Name of an uploaded asset in your Discord application (used if large_image_url is not set).
+# You can upload a custom image at: discord.com/developers/applications → Rich Presence → Art Assets
+large_image_key: "affine"
+
+# Text shown on the "details" line (top) when a document is open.
+# The document name will be appended after this prefix.
+details_prefix: "📝"
+
+# Text shown on the "state" line (bottom) when a document is open.
+state_text: "Edytowanie notatek"
+
+# Text shown on the "details" line when AFFiNE is open but no document title
+# can be detected (e.g. home screen or window title not readable).
+idle_text: "Otwarte"
