@@ -7,7 +7,8 @@ from .config import load as load_config
 from .monitor import (
     get_affine_start_time,
     get_document_title,
-    is_affine_running,
+    is_affine_window_open,
+    unload_kwin_script,
 )
 from .rpc import AffineRPC
 
@@ -27,6 +28,7 @@ def main() -> None:
 
     def shutdown(sig, frame):
         logger.info("Shutting down…")
+        unload_kwin_script()
         rpc.disconnect()
         sys.exit(0)
 
@@ -40,7 +42,7 @@ def main() -> None:
 
     while True:
         try:
-            running = is_affine_running()
+            running = is_affine_window_open()
 
             if running:
                 # (Re-)connect to Discord if needed
@@ -61,7 +63,8 @@ def main() -> None:
 
             else:
                 if rpc_active:
-                    logger.info("AFFiNE closed — clearing presence.")
+                    logger.info("AFFiNE window closed — clearing presence.")
+                    unload_kwin_script()
                     rpc.disconnect()
                     rpc_active = False
                     last_document = ""  # reset sentinel
