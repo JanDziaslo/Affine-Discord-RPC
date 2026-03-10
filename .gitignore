@@ -4,7 +4,7 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Config — contains secrets (client_id, bot_token)
+# Config — contains secrets
 config.yaml
 
 # Cache
