@@ -1,0 +1,11 @@
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+*.pyo
+config.yaml
+*.md
+*.sh
+docker-compose.yml
+Dockerfile
