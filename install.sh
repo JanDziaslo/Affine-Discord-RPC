@@ -36,15 +36,17 @@ if grep -q "REPLACE_WITH" "$CONFIG_FILE"; then
     warn "config.yaml still has placeholder values!"
     warn "Edit $CONFIG_FILE and fill in:"
     warn "  • client_id  — Discord Application ID"
-    warn "  • bot_token  — Discord Bot Token (for logo auto-upload)"
     echo ""
 fi
 
-# Optional tools warning
+# Optional tools warning (fallback for X11/XWayland setups)
+if ! command -v qdbus6 &>/dev/null; then
+    warn "qdbus6 not found — KWin window detection will not work."
+    warn "On KDE Plasma it should be pre-installed. Check: which qdbus6"
+fi
 if ! command -v xdotool &>/dev/null && ! command -v wmctrl &>/dev/null; then
-    warn "Neither xdotool nor wmctrl found."
-    warn "Install one for window title detection:"
-    warn "  sudo pacman -S xdotool   (recommended)"
+    warn "Neither xdotool nor wmctrl found (X11/XWayland fallback only)."
+    warn "On KDE Plasma Wayland this is not needed — qdbus6 handles detection."
     echo ""
 fi
 
@@ -58,8 +60,8 @@ else
 fi
 
 info "Installing Python dependencies …"
-"$VENV_DIR/bin/pip" install --upgrade pip --quiet
-"$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" --quiet
+"$VENV_DIR/bin/pip" install --quiet --disable-pip-version-check --upgrade pip
+"$VENV_DIR/bin/pip" install --quiet --disable-pip-version-check -r "$SCRIPT_DIR/requirements.txt"
 info "Dependencies installed."
 
 # ── Install systemd user service ──────────────────────────────────────────────
@@ -90,11 +92,12 @@ info "systemd user service written to $SERVICE_DIR/$SERVICE_NAME"
 systemctl --user daemon-reload
 systemctl --user enable "$SERVICE_NAME"
 
-# Try to start; it's fine if it fails (e.g. graphical session not fully up yet)
-if systemctl --user start "$SERVICE_NAME" 2>/dev/null; then
+# Try to start; may fail if graphical session is not fully up yet
+if systemctl --user start "$SERVICE_NAME"; then
     info "Service started successfully."
 else
     warn "Service could not start right now (will auto-start on next login)."
+    warn "Check status: systemctl --user status $SERVICE_NAME"
 fi
 
 echo ""
