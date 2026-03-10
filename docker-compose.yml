@@ -1,6 +1,6 @@
 services:
   affine-discord-rpc:
-    image: ghcr.io/dziaslo/affine-discord-rpc:latest
+    image: ghcr.io/jandziaslo/affine-discord-rpc:latest
     pid: host
 
     volumes:
