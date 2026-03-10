@@ -1,84 +1,69 @@
 # AFFiNE Discord RPC
 
-Osobna aplikacja Python, która wyświetla [Discord Rich Presence](https://discord.com/rich-presence) podczas korzystania z [AFFiNE](https://affine.pro/) na Linuksie (testowane na EndeavourOS / KDE Plasma Wayland).
+A standalone Python application that shows [Discord Rich Presence](https://discord.com/rich-presence) while using [AFFiNE](https://affine.pro/) on Linux. Tested on EndeavourOS with KDE Plasma (Wayland).
 
 ```
-Discord pokazuje:
-  📝 Moja notatka          ← tytuł aktywnego dokumentu
-  Edytowanie notatek       ← status
-  [logo AFFiNE]  AFFiNE    ← obraz + czas od uruchomienia
+Discord shows:
+  📝 My Document           ← active document title
+  Editing notes            ← status text
+  [AFFiNE logo]  AFFiNE   ← image + elapsed time
 ```
 
 ---
 
-## Wymagania
+## Requirements
 
 - Python 3.10+
-- AFFiNE (wersja stable, zainstalowana jako AppImage lub `.deb`)
-- Discord (aplikacja desktopowa uruchomiona w tle)
-- `xdotool` **lub** `wmctrl` — do odczytu tytułu okna
+- AFFiNE stable (AppImage, `.deb`, or system package)
+- Discord desktop client running in the background
+- `qdbus6` — for window visibility detection on KDE Plasma Wayland (usually pre-installed)
 
+Optional: `xdotool` or `wmctrl` as fallback for X11/XWayland setups:
 ```bash
-sudo pacman -S xdotool   # zalecane
+sudo pacman -S xdotool
 ```
 
-> **KDE Plasma Wayland:** AFFiNE (Electron) domyślnie działa przez XWayland,
-> więc `xdotool` działa bez żadnych dodatkowych ustawień.
-> Jeśli uruchamiasz AFFiNE z flagą `--ozone-platform=wayland`,
-> skrypt spróbuje użyć KWin D-Bus jako fallbacku.
+---
+
+## Step 1 — Create a Discord Application
+
+1. Go to [discord.com/developers/applications](https://discord.com/developers/applications)
+2. Click **New Application** → enter a name (e.g. `AFFiNE`) → **Create**
+3. Copy the **Application ID** from the *General Information* page
+4. Paste it into `config.yaml` as `client_id`
 
 ---
 
-## Krok 1 — Utwórz Discord Application i zdobądź Client ID
-
-1. Otwórz [discord.com/developers/applications](https://discord.com/developers/applications)
-2. Kliknij **New Application** → wpisz nazwę (np. `AFFiNE`) → **Create**
-3. Skopiuj **Application ID** z sekcji *General Information*
-4. Wklej go do `config.yaml` jako `client_id`
-
-## Krok 2 — Utwórz Bot Token (do auto-uploadu logo)
-
-1. W tej samej aplikacji: zakładka **Bot** → **Add Bot** → **Yes, do it!**
-2. Kliknij **Reset Token** → skopiuj token
-3. Wklej go do `config.yaml` jako `bot_token`
-
-> Token jest potrzebny **tylko raz** — przy pierwszym uruchomieniu skrypt
-> automatycznie uploaduje `affine.webp` jako asset do Twojej aplikacji Discord
-> i zapisuje flagę w `~/.cache/affine-discord-rpc/asset_uploaded`.
-> Przy kolejnych startach token nie jest używany.
-
----
-
-## Instalacja
+## Installation
 
 ```bash
-# 1. Sklonuj repozytorium
-git clone https://github.com/twoj-nick/Affine-Discord-RPC.git
+# 1. Clone the repository
+git clone https://github.com/your-username/Affine-Discord-RPC.git
 cd Affine-Discord-RPC
 
-# 2. Uzupełnij config.yaml
-nano config.yaml   # wpisz client_id i bot_token
+# 2. Fill in config.yaml
+nano config.yaml   # set client_id
 
-# 3. Uruchom instalator
+# 3. Run the installer
 chmod +x install.sh
 ./install.sh
 ```
 
-Instalator:
-- tworzy środowisko wirtualne Python w `.venv/`
-- instaluje zależności (`pypresence`, `psutil`, itp.)
-- tworzy i włącza **systemd user service** (auto-start po zalogowaniu)
+The installer:
+- creates a Python virtual environment in `.venv/`
+- installs dependencies (`pypresence`, `psutil`, etc.)
+- installs and enables a **systemd user service** (auto-starts on login)
 
-### Zarządzanie serwisem
+### Service management
 
 ```bash
-systemctl --user status  affine-discord-rpc.service   # stan
+systemctl --user status  affine-discord-rpc.service   # check status
 systemctl --user restart affine-discord-rpc.service   # restart
-systemctl --user stop    affine-discord-rpc.service   # zatrzymanie
-journalctl --user -u affine-discord-rpc.service -f    # logi na żywo
+systemctl --user stop    affine-discord-rpc.service   # stop
+journalctl --user -u affine-discord-rpc.service -f    # live logs
 ```
 
-### Uruchomienie ręczne (testowanie)
+### Manual run (for testing)
 
 ```bash
 .venv/bin/python -m affine_rpc.main
@@ -86,80 +71,94 @@ journalctl --user -u affine-discord-rpc.service -f    # logi na żywo
 
 ---
 
-## Konfiguracja (`config.yaml`)
+## Configuration (`config.yaml`)
 
-| Klucz | Opis | Domyślnie |
+| Key | Description | Default |
 |---|---|---|
-| `client_id` | Discord Application ID | **wymagane** |
-| `bot_token` | Discord Bot Token (jednorazowy upload logo) | **wymagane** |
-| `poll_interval` | Jak często sprawdzać stan AFFiNE (sekundy) | `5` |
-| `large_image_key` | Nazwa assetu obrazu w Discord | `affine` |
-| `details_prefix` | Prefiks przed tytułem dokumentu | `📝` |
-| `state_text` | Tekst statusu gdy dokument jest otwarty | `Edytowanie notatek` |
-| `idle_text` | Tekst gdy AFFiNE otwarte bez wykrytego dokumentu | `Otwarte` |
+| `client_id` | Discord Application ID | **required** |
+| `large_image_url` | HTTPS URL of the logo shown in Discord | AFFiNE GitHub avatar |
+| `large_image_key` | Uploaded asset name (used if `large_image_url` is not set) | `affine` |
+| `poll_interval` | How often to check AFFiNE state (seconds) | `5` |
+| `details_prefix` | Prefix before the document title | `📝` |
+| `state_text` | Status text shown when a document is open | `Editing notes` |
+| `idle_text` | Text shown when AFFiNE is open but no document is detected | `Open` |
 
 ---
 
-## Jak to działa
+## How it works
 
 ```
-AFFiNE (Electron/XWayland)
+AFFiNE (Electron, native Wayland)
         │
-        │  xdotool / wmctrl / KWin D-Bus
+        │  KWin D-Bus scripting (workspace.windowList())
+        │  → detects whether AFFiNE window is open/closed
+        │
+        │  ~/.config/AFFiNE/global-state.json
+        │  → reads active document title directly
         ▼
-[affine_rpc/monitor.py]  — wykrywa proces, odczytuje tytuł okna
+[affine_rpc/monitor.py]  — process + window detection, document title
         │
-        │  parsuje "Dokument · AFFiNE" → "Dokument"
         ▼
 [affine_rpc/rpc.py]      — pypresence → Discord IPC socket
-        │                  (~/.run/user/1000/discord-ipc-0)
+        │                  (/run/user/1000/discord-ipc-0)
         ▼
-   Discord Client         — wyświetla Rich Presence
+   Discord Client         — displays Rich Presence
 ```
 
-Przy starcie `rpc.py` sprawdza przez Discord REST API czy asset `affine`
-już istnieje. Jeśli nie — uploaduje `affine.webp` automatycznie (wymaga `bot_token`).
+**Window detection** uses KWin's D-Bus scripting API (`workspace.windowList()`) to
+check whether AFFiNE has an open, non-minimized window. This works correctly on
+native **KDE Plasma Wayland** — even when AFFiNE keeps running in the system tray
+after the window is closed. `xdotool`/`wmctrl` are used as a fallback on X11/XWayland.
+
+**Document title** is read directly from `~/.config/AFFiNE/global-state.json`
+(`tabViewsMetaSchema` → active workbench → active view title). No window title
+parsing needed, so it works reliably on Wayland.
+
+**Logo** is loaded from a direct HTTPS URL (AFFiNE's GitHub organization avatar
+by default). No token or manual asset upload required.
 
 ---
 
-## Rozwiązywanie problemów
+## Troubleshooting
 
-**Discord nie pokazuje presence:**
-- Upewnij się że Discord jest uruchomiony
-- Sprawdź logi: `journalctl --user -u affine-discord-rpc.service -f`
-- Upewnij się że `client_id` w `config.yaml` jest poprawny
+**Discord doesn't show Rich Presence:**
+- Make sure Discord desktop client is running
+- Check logs: `journalctl --user -u affine-discord-rpc.service -f`
+- Verify `client_id` in `config.yaml` matches your Discord Application ID
 
-**Logo nie zostało uploadowane:**
-- Sprawdź czy `bot_token` jest poprawny i czy bot jest dodany do aplikacji
-- Usuń flagę i uruchom ponownie: `rm ~/.cache/affine-discord-rpc/asset_uploaded`
+**Presence is not cleared when AFFiNE is closed:**
+- This should work automatically via KWin window detection
+- Make sure `qdbus6` is available: `which qdbus6`
+- Check logs for any KWin errors: `journalctl --user -u affine-discord-rpc.service -f`
 
-**Tytuł dokumentu nie jest wykrywany:**
-- Zainstaluj `xdotool`: `sudo pacman -S xdotool`
-- Jeśli AFFiNE działa w trybie natywnego Wayland: usuń flagę `--ozone-platform=wayland`
-  z uruchomienia AFFiNE (XWayland działa lepiej z tym skryptem)
+**Document title not detected:**
+- AFFiNE must be running and have a document open
+- Check that `~/.config/AFFiNE/global-state.json` exists and is readable
+- Increase `poll_interval` in `config.yaml` if updates are too slow
 
-**Serwis się nie startuje:**
-- `systemctl --user status affine-discord-rpc.service`
-- Sprawdź czy `graphical-session.target` jest aktywny po zalogowaniu
+**Service does not start:**
+- Run `systemctl --user status affine-discord-rpc.service` for details
+- Make sure `graphical-session.target` is active after login
+- Try running manually first: `.venv/bin/python -m affine_rpc.main`
 
 ---
 
-## Struktura projektu
+## Project structure
 
 ```
 Affine-Discord-RPC/
 ├── affine_rpc/
 │   ├── __init__.py
-│   ├── config.py    # ładowanie i walidacja config.yaml
-│   ├── monitor.py   # detekcja procesu + odczyt tytułu okna
-│   ├── rpc.py       # pypresence wrapper + upload logo
-│   └── main.py      # główna pętla + obsługa sygnałów
-├── affine.webp      # logo uploadowane do Discord
-├── config.yaml      # konfiguracja użytkownika
+│   ├── config.py    # config.yaml loading and validation
+│   ├── monitor.py   # process + KWin window detection, document title
+│   ├── rpc.py       # pypresence wrapper
+│   └── main.py      # main polling loop + signal handling
+├── affine.webp      # AFFiNE logo (optional, for manual asset upload)
+├── config.yaml      # user configuration (excluded from git)
 ├── requirements.txt
-└── install.sh       # instalator (venv + systemd service)
+└── install.sh       # installer (venv + systemd service)
 ```
 
-## Licencja
+## License
 
 MIT
