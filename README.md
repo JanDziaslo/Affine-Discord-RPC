@@ -43,7 +43,7 @@ Two ways to run — pick one.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/dziaslo/Affine-Discord-RPC.git
+git clone https://github.com/JanDziaslo/Affine-Discord-RPC
 cd Affine-Discord-RPC
 
 # 2. Fill in config.yaml
@@ -82,7 +82,7 @@ journalctl --user -u affine-discord-rpc.service -f    # live logs
 
 ```bash
 # 1. Clone the repository (only config.yaml and docker-compose.yml are needed)
-git clone https://github.com/dziaslo/Affine-Discord-RPC.git
+git clone https://github.com/JanDziaslo/Affine-Discord-RPC
 cd Affine-Discord-RPC
 
 # 2. Fill in config.yaml
@@ -102,7 +102,7 @@ docker compose up -d
 docker compose up -d --build
 ```
 
-The image is automatically built and pushed to `ghcr.io/dziaslo/affine-discord-rpc` on every push to `main` and on version tags (`v*.*.*`) via GitHub Actions.
+The image is automatically built and pushed to `https://github.com/JanDziaslo/affine-discord-rpc` on every push to `main` and on version tags (`v*.*.*`) via GitHub Actions.
 
 **Container management:**
 ```bash
