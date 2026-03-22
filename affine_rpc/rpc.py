@@ -1,5 +1,8 @@
 import logging
+import os
 import time
+from glob import glob
+from pathlib import Path
 from typing import Optional
 
 from pypresence import Presence
@@ -19,17 +22,84 @@ class AffineRPC:
         self.client_id = str(config["client_id"])
         self._presence: Optional[Presence] = None
         self.connected = False
+        self._active_runtime_dir: Optional[str] = None
+
+    def _candidate_runtime_dirs(self) -> list[str]:
+        """Return possible runtime directories that may contain Discord IPC."""
+        dirs: list[str] = []
+
+        # Prefer explicit runtime dir first.
+        env_runtime = os.environ.get("XDG_RUNTIME_DIR", "").strip()
+        if env_runtime:
+            dirs.append(env_runtime)
+
+        # Common defaults.
+        dirs.append(f"/run/user/{os.getuid()}")
+
+        # Discover IPC sockets directly and add their parent directories.
+        socket_patterns = [
+            "/run/user/*/discord-ipc-*",
+            "/run/user/*/app/*/discord-ipc-*",  # Flatpak-style location
+            "/tmp/discord-ipc-*",
+        ]
+        for pattern in socket_patterns:
+            for path in glob(pattern):
+                dirs.append(str(Path(path).parent))
+
+        # Also consider all user runtime dirs as last resort.
+        for p in Path("/run/user").glob("*"):
+            if p.is_dir():
+                dirs.append(str(p))
+
+        # De-duplicate while preserving order.
+        unique: list[str] = []
+        seen: set[str] = set()
+        for d in dirs:
+            if d in seen:
+                continue
+            if Path(d).exists():
+                seen.add(d)
+                unique.append(d)
+        return unique
 
     # ── Discord RPC connection ─────────────────────────────────────────────────
 
     def connect(self) -> bool:
         """Connect to Discord IPC. Returns True on success."""
+        original_runtime = os.environ.get("XDG_RUNTIME_DIR")
+
+        # Try a previously working runtime dir first.
+        candidates = self._candidate_runtime_dirs()
+        if self._active_runtime_dir and self._active_runtime_dir in candidates:
+            candidates.remove(self._active_runtime_dir)
+            candidates.insert(0, self._active_runtime_dir)
+
         try:
-            self._presence = Presence(self.client_id)
-            self._presence.connect()
-            self.connected = True
-            logger.info("Connected to Discord Rich Presence.")
-            return True
+            for runtime_dir in candidates:
+                os.environ["XDG_RUNTIME_DIR"] = runtime_dir
+                try:
+                    presence = Presence(self.client_id)
+                    presence.connect()
+                    self._presence = presence
+                    self.connected = True
+                    self._active_runtime_dir = runtime_dir
+                    logger.info(
+                        f"Connected to Discord Rich Presence (runtime: {runtime_dir})."
+                    )
+                    return True
+                except DiscordNotFound:
+                    continue
+                except (PipeClosed, DiscordError):
+                    continue
+
+            self._presence = None
+            self.connected = False
+            if original_runtime is None:
+                os.environ.pop("XDG_RUNTIME_DIR", None)
+            else:
+                os.environ["XDG_RUNTIME_DIR"] = original_runtime
+            logger.debug("Discord IPC not available yet.")
+            return False
         except DiscordNotFound:
             logger.debug("Discord client is not running.")
             self._presence = None
