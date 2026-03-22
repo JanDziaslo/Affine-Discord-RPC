@@ -20,6 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_HEARTBEAT_INTERVAL = 60
+
 
 def main() -> None:
     config = load_config()
@@ -39,6 +41,7 @@ def main() -> None:
 
     last_document: str | None = ""   # sentinel: empty string means "not yet set"
     rpc_active = False
+    next_heartbeat = time.monotonic() + _HEARTBEAT_INTERVAL
 
     while True:
         try:
@@ -48,6 +51,11 @@ def main() -> None:
                 # (Re-)connect to Discord if needed
                 if not rpc.connected:
                     rpc.connect()
+
+                # If Discord is still unavailable, keep waiting and force a
+                # full presence refresh after reconnect.
+                if not rpc.connected:
+                    rpc_active = False
 
                 if rpc.connected:
                     document = get_document_title()
@@ -62,12 +70,24 @@ def main() -> None:
                             rpc_active = True
 
             else:
-                if rpc_active:
-                    logger.info("AFFiNE window closed — clearing presence.")
+                if rpc.connected or rpc_active:
+                    logger.info("AFFiNE window closed or unavailable — clearing presence.")
                     unload_kwin_script()
                     rpc.disconnect()
                     rpc_active = False
                     last_document = ""  # reset sentinel
+
+            now = time.monotonic()
+            if now >= next_heartbeat:
+                if not running:
+                    logger.info("Heartbeat: waiting for AFFiNE window.")
+                elif not rpc.connected:
+                    logger.info("Heartbeat: waiting for Discord IPC.")
+                elif rpc.connected and not rpc_active:
+                    logger.info("Heartbeat: connected to Discord, waiting to publish presence.")
+                else:
+                    logger.info("Heartbeat: RPC active.")
+                next_heartbeat = now + _HEARTBEAT_INTERVAL
 
         except Exception as exc:
             logger.error(f"Unexpected error in main loop: {exc}", exc_info=True)

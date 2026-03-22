@@ -2,26 +2,22 @@ services:
   affine-discord-rpc:
     image: ghcr.io/jandziaslo/affine-discord-rpc:latest
     pid: host
-
+    user: "${UID:-1000}:${GID:-1000}"
+    container_name: affine-rpc
     volumes:
-      # Discord IPC socket — where pypresence connects to Discord
-      - ${XDG_RUNTIME_DIR:-/run/user/1000}:${XDG_RUNTIME_DIR:-/run/user/1000}
+      # Mount all user runtime dirs; Discord socket appears under /run/user/<uid>/discord-ipc-*
+      - /run/user:/run/user
 
-      # AFFiNE state files — document title is read from global-state.json
-      # Mounted read-only; path is identical inside and outside the container
-      # (Python reads Path.home() which is set via the HOME env var below).
-      - ${HOME}/.config/AFFiNE:${HOME}/.config/AFFiNE:ro
+      # Mount host homes so the app can find AFFiNE global-state.json reliably
+      # even when HOME is not exported by the autostart environment.
+      - /home:/host-home:ro
 
       # User configuration — must be filled in before first run
       - ./config.yaml:/app/config.yaml:ro
 
     environment:
-      # Make Path.home() inside Python resolve to the same path as on the host.
-      # This ensures global-state.json is found at the correct mounted path.
-      HOME: ${HOME}
-
-      # Point pypresence at the correct Discord IPC socket directory.
-      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-/run/user/1000}
+      # Point pypresence at the user's runtime directory from .env (UID).
+      XDG_RUNTIME_DIR: /run/user/${UID:-1000}
 
       PYTHONUNBUFFERED: "1"
 

@@ -12,7 +12,7 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
-_AFFINE_STATE_FILE = Path.home() / ".config" / "AFFiNE" / "global-state.json"
+_AFFINE_STATE_FILE_ENV = "AFFINE_STATE_FILE"
 
 # Window title format: "Document · AFFiNE"  or  "(3) Document · AFFiNE"
 _TITLE_PATTERN = re.compile(r"^(?:\(\d+\) )?(.+?) · AFFiNE$")
@@ -20,6 +20,41 @@ _TITLE_PATTERN = re.compile(r"^(?:\(\d+\) )?(.+?) · AFFiNE$")
 # KWin scripting state (loaded once, reused)
 _kwin_script_id: Optional[str] = None
 _kwin_script_path: Optional[str] = None
+
+
+def _candidate_state_files() -> list[Path]:
+    """Return possible paths to AFFiNE global-state.json."""
+    candidates: list[Path] = []
+
+    # Explicit override (useful in containers)
+    env_path = os.environ.get(_AFFINE_STATE_FILE_ENV, "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+
+    # Native/default location
+    candidates.append(Path.home() / ".config" / "AFFiNE" / "global-state.json")
+
+    # Docker fallback: host home mounted to /host-home
+    host_home = Path("/host-home")
+    if host_home.exists():
+        try:
+            for user_home in host_home.iterdir():
+                if not user_home.is_dir():
+                    continue
+                candidates.append(
+                    user_home / ".config" / "AFFiNE" / "global-state.json"
+                )
+        except OSError:
+            pass
+
+    return candidates
+
+
+def _get_affine_state_file() -> Optional[Path]:
+    for p in _candidate_state_files():
+        if p.exists():
+            return p
+    return None
 
 
 # ── Process detection ──────────────────────────────────────────────────────────
@@ -253,8 +288,9 @@ def get_document_title() -> Optional[str]:
     """
     # ── Primary: read from AFFiNE's state file ────────────────────────────────
     try:
-        if _AFFINE_STATE_FILE.exists():
-            with open(_AFFINE_STATE_FILE, "r", encoding="utf-8") as f:
+        state_file = _get_affine_state_file()
+        if state_file is not None:
+            with open(state_file, "r", encoding="utf-8") as f:
                 state = json.load(f)
             schema = state.get("tabViewsMetaSchema")
             if schema:
